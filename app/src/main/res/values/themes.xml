@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.S15CodecTest" parent="Theme.Material3.Dark">
+        <item name="colorPrimary">#4CC9F0</item>
+        <item name="colorOnPrimary">#00344A</item>
+        <item name="android:statusBarColor">#000000</item>
+    </style>
+</resources>

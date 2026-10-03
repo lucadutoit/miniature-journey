@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">S15 Codec Test</string>
+
+    <string name="title_library">Audio library</string>
+    <string name="title_new_session">New session</string>
+    <string name="title_preflight">Preflight checklist</string>
+    <string name="title_runner">Session runner</string>
+    <string name="title_results">Results</string>
+    <string name="title_history">Sessions</string>
+    <string name="title_audit">Audit log</string>
+    <string name="title_settings">Settings</string>
+    <string name="title_methodology">Methodology</string>
+</resources>

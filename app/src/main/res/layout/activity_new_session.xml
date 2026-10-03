@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <EditText
+            android:id="@+id/nameInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Session name"
+            android:inputType="text" />
+
+        <CheckBox
+            android:id="@+id/pilotCheck"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pilot run (2 min x 2 reps)" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Clips to test"
+            android:textStyle="bold" />
+
+        <!-- TODO(setup): add one CheckBox per Clip.ALL in here from the Java code. -->
+        <LinearLayout
+            android:id="@+id/clipList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Checklist"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/problemsText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TODO(setup): show PreflightChecker problems here"
+            android:textColor="#FF5252" />
+
+        <CheckBox
+            android:id="@+id/appsClosedCheck"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="All other apps are closed" />
+
+        <CheckBox
+            android:id="@+id/screenOffCheck"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="I will turn the screen off after starting" />
+
+        <Button
+            android:id="@+id/startButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:enabled="false"
+            android:text="Start session" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,128 @@
+{
+  "clipTitle": "S15 standardized synthetic music clip",
+  "clipDescription": "60 s stereo 44.1 kHz 16-bit synthetic music-like clip (chord pads, bass, melody lead, percussion, varied dynamics), generated programmatically with a fixed random seed for full reproducibility. Encoded from the identical PCM master for every codec/bitrate.",
+  "sourceSampleRate": 44100,
+  "sourceChannels": 2,
+  "assets": [
+    {
+      "id": "mp3_96",
+      "codec": "MP3",
+      "container": "mp3",
+      "nominalKbps": 96,
+      "fileName": "clip_mp3_96.mp3",
+      "durationMs": 60000,
+      "sampleRate": 44100,
+      "channels": 2,
+      "effectiveKbps": 96.1,
+      "sizeBytes": 720711
+    },
+    {
+      "id": "aac_96",
+      "codec": "AAC",
+      "container": "m4a",
+      "nominalKbps": 96,
+      "fileName": "clip_aac_96.m4a",
+      "durationMs": 60000,
+      "sampleRate": 44100,
+      "channels": 2,
+      "effectiveKbps": 99.8,
+      "sizeBytes": 748501
+    },
+    {
+      "id": "opus_96",
+      "codec": "OPUS",
+      "container": "ogg",
+      "nominalKbps": 96,
+      "fileName": "clip_opus_96.ogg",
+      "durationMs": 60006,
+      "sampleRate": 48000,
+      "channels": 2,
+      "effectiveKbps": 97.1,
+      "sizeBytes": 728616
+    },
+    {
+      "id": "mp3_128",
+      "codec": "MP3",
+      "container": "mp3",
+      "nominalKbps": 128,
+      "fileName": "clip_mp3_128.mp3",
+      "durationMs": 60000,
+      "sampleRate": 44100,
+      "channels": 2,
+      "effectiveKbps": 128.1,
+      "sizeBytes": 960932
+    },
+    {
+      "id": "aac_128",
+      "codec": "AAC",
+      "container": "m4a",
+      "nominalKbps": 128,
+      "fileName": "clip_aac_128.m4a",
+      "durationMs": 60000,
+      "sampleRate": 44100,
+      "channels": 2,
+      "effectiveKbps": 137.9,
+      "sizeBytes": 1033913
+    },
+    {
+      "id": "opus_128",
+      "codec": "OPUS",
+      "container": "ogg",
+      "nominalKbps": 128,
+      "fileName": "clip_opus_128.ogg",
+      "durationMs": 60006,
+      "sampleRate": 48000,
+      "channels": 2,
+      "effectiveKbps": 129.5,
+      "sizeBytes": 971083
+    },
+    {
+      "id": "mp3_192",
+      "codec": "MP3",
+      "container": "mp3",
+      "nominalKbps": 192,
+      "fileName": "clip_mp3_192.mp3",
+      "durationMs": 60000,
+      "sampleRate": 44100,
+      "channels": 2,
+      "effectiveKbps": 192.2,
+      "sizeBytes": 1441376
+    },
+    {
+      "id": "aac_192",
+      "codec": "AAC",
+      "container": "m4a",
+      "nominalKbps": 192,
+      "fileName": "clip_aac_192.m4a",
+      "durationMs": 60000,
+      "sampleRate": 44100,
+      "channels": 2,
+      "effectiveKbps": 206.1,
+      "sizeBytes": 1545674
+    },
+    {
+      "id": "opus_192",
+      "codec": "OPUS",
+      "container": "ogg",
+      "nominalKbps": 192,
+      "fileName": "clip_opus_192.ogg",
+      "durationMs": 60006,
+      "sampleRate": 48000,
+      "channels": 2,
+      "effectiveKbps": 193.6,
+      "sizeBytes": 1451879
+    },
+    {
+      "id": "flac",
+      "codec": "FLAC",
+      "container": "flac",
+      "nominalKbps": null,
+      "fileName": "clip_flac.flac",
+      "durationMs": 60000,
+      "sampleRate": 44100,
+      "channels": 2,
+      "effectiveKbps": 703.5,
+      "sizeBytes": 5276156
+    }
+  ]
+}

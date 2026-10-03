@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- battery outline -->
+    <path
+        android:pathData="M38,32 h32 a4,4 0 0 1 4,4 v40 a4,4 0 0 1 -4,4 h-32 a4,4 0 0 1 -4,-4 v-40 a4,4 0 0 1 4,-4 z"
+        android:strokeColor="#4CC9F0"
+        android:strokeWidth="3.5"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M48,26 h12 v6 h-12 z"
+        android:fillColor="#4CC9F0" />
+    <!-- waveform bars inside battery -->
+    <path android:pathData="M43,60 v-8 h3.5 v8 z" android:fillColor="#F72585" />
+    <path android:pathData="M49.5,66 v-20 h3.5 v20 z" android:fillColor="#F72585" />
+    <path android:pathData="M56,62 v-12 h3.5 v12 z" android:fillColor="#F72585" />
+    <path android:pathData="M62.5,68 v-24 h3.5 v24 z" android:fillColor="#F72585" />
+</vector>
