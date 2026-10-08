@@ -29,7 +29,6 @@
             android:text="Clips to test"
             android:textStyle="bold" />
 
-        <!-- TODO(setup): add one CheckBox per Clip.ALL in here from the Java code. -->
         <LinearLayout
             android:id="@+id/clipList"
             android:layout_width="match_parent"
@@ -47,7 +46,7 @@
             android:id="@+id/problemsText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="TODO(setup): show PreflightChecker problems here"
+            android:text="Checking phone..."
             android:textColor="#FF5252" />
 
         <CheckBox
