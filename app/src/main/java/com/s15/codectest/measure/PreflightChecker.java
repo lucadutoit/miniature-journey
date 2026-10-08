@@ -1,17 +1,25 @@
 package com.s15.codectest.measure;
 
+import com.s15.codectest.Config;
 import java.util.ArrayList;
 import java.util.List;
 
 // Owner: setup
 public class PreflightChecker {
 
-    // TODO(setup): return a list of problems that stop the session from starting
-    //  (empty list = ready to go). PreflightCheckerTest checks this.
-    //  - airplane mode off      -> "Turn on airplane mode"
-    //  - charger plugged in     -> "Unplug the charger"
-    //  - battery below Config.MIN_BATTERY_PERCENT -> "Charge the battery to at least 80%"
     public static List<String> problems(BatterySnapshot phone) {
-        return new ArrayList<>();
+        List<String> problems = new ArrayList<>();
+
+        if (!phone.airplaneMode) {
+            problems.add("Turn on airplane mode.");
+        }
+        if (phone.plugged) {
+            problems.add("Unplug the charger.");
+        }
+        if (phone.levelPct < Config.MIN_BATTERY_PERCENT) {
+            problems.add("Charge the battery to at least " + Config.MIN_BATTERY_PERCENT + "%");
+        }
+        return problems;
     }
 }
+
