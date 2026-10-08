@@ -25,10 +25,20 @@ public class SessionsActivity extends AppCompatActivity {
                     + " sessions in the list below"));
         }).start();
 
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+
         // TODO(sessions):
         //  1. Show the sessions in R.id.sessionList using an ArrayAdapter<String>
         //     (one line each, e.g. "Quick test - COMPLETED - 03 Oct 14:30").
         //  2. When a session is tapped: on a background thread call CsvExporter.export(this, session.id),
         //     then on the UI thread call CsvExporter.share(this, file). Show a Toast if it fails.
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        finish();
+        return true;
     }
 }
