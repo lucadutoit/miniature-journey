@@ -60,6 +60,10 @@ public class NewSessionActivity extends AppCompatActivity {
         screenOffCheck = findViewById(R.id.screenOffCheck);
         startButton = findViewById(R.id.startButton);
 
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+
         addClipBoxes();
 
         // Re-check the Start button whenever a checklist box changes.
@@ -79,7 +83,7 @@ public class NewSessionActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        handler.post(checkPhone);
+        handler.removeCallbacks(checkPhone);
     }
 
     // Task 1: one CheckBox per clip, 128k clips and FLAC are ticked default.
@@ -144,6 +148,12 @@ public class NewSessionActivity extends AppCompatActivity {
             if (box.isChecked()) files.add((String) box.getTag());
         }
         return files;
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        finish();
+        return true;
     }
 
     // Creates the session, starts the measurement and opens the running screen.
