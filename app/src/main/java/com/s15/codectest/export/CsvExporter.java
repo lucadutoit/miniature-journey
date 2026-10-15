@@ -6,8 +6,20 @@ import android.net.Uri;
 
 import androidx.core.content.FileProvider;
 
+import com.s15.codectest.Clip;
+import com.s15.codectest.db.BatterySample;
+import com.s15.codectest.db.LabDao;
+import com.s15.codectest.db.LabDatabase;
+import com.s15.codectest.db.LogEntry;
+import com.s15.codectest.db.Trial;
+
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 // Owner: sessions
 public class CsvExporter {
@@ -17,25 +29,103 @@ public class CsvExporter {
             "trial_id,session_id,clip,codec,kbps,repetition,is_rerun,status,delta_charge_mah,"
                     + "energy_joules,mean_current_ma,start_temp_c,end_temp_c,sample_count,note";
 
-    // TODO(sessions): save the session's data as a zip file and return it.
-    //  - Put it in new File(context.getCacheDir(), "exports") (make the folder first),
-    //    named "s15-codec-test-session-<id>.zip". Use java.util.zip.ZipOutputStream.
-    //  - trials.csv: TRIAL_COLUMNS, then one row per trial (db.getTrials). Get codec/kbps from
-    //    Clip.find(trial.clipFile). Temperatures in °C (tenths / 10.0). Empty cell for null values.
-    //  - samples.csv: one row per BatterySample (db.getSamples).
-    //  - log.csv: time, trial_id, message (db.getLog).
-    //  - Put every cell through csv(...).
-    //  Uses the database, so call it from a background thread.
+    public static final String SAMPLE_COLUMNS =
+            "sample_id,trial_id,elapsed_ms,current_ua,charge_counter_uah,voltage_mv,level_pct,"
+                    + "temp_c,screen_on,airplane_mode,plugged";
+
+    public static final String LOG_COLUMNS = "time,trial_id,message";
+
+    // Saves the session's trials, samples and log as one zip file in the cache and returns it.
+    // Uses the database, so call it from a background thread.
     public static File export(Context context, long sessionId) throws IOException {
-        throw new IOException("Export not built yet");
+        LabDao db = LabDatabase.get(context);
+
+        File folder = new File(context.getCacheDir(), "exports");
+        if (!folder.exists() && !folder.mkdirs()) {
+            throw new IOException("Could not make the exports folder");
+        }
+        File zipFile = new File(folder, "s15-codec-test-session-" + sessionId + ".zip");
+
+        try (ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(zipFile))) {
+            write(zip, "trials.csv", trialsCsv(db, sessionId));
+            write(zip, "samples.csv", samplesCsv(db, sessionId));
+            write(zip, "log.csv", logCsv(db, sessionId));
+        }
+        return zipFile;
     }
 
-    // TODO(sessions): make a value safe for a CSV cell (CsvTest checks this).
-    //  null -> "". If the text has a comma, a quote or a new line, put quotes around it
-    //  and double any quotes inside: say "hi"  ->  "say ""hi"""
+    private static String trialsCsv(LabDao db, long sessionId) {
+        StringBuilder out = new StringBuilder(TRIAL_COLUMNS).append("\n");
+        for (Trial t : db.getTrials(sessionId)) {
+            Clip clip = Clip.find(t.clipFile);
+            out.append(csv(t.id)).append(",")
+                    .append(csv(t.sessionId)).append(",")
+                    .append(csv(t.clipFile)).append(",")
+                    .append(csv(clip == null ? null : clip.codec)).append(",")
+                    .append(csv(clip == null ? null : clip.kbps)).append(",")
+                    .append(csv(t.repetition)).append(",")
+                    .append(csv(t.isRerun)).append(",")
+                    .append(csv(t.status)).append(",")
+                    .append(csv(t.deltaChargeMah)).append(",")
+                    .append(csv(t.energyJoules)).append(",")
+                    .append(csv(t.meanCurrentMa)).append(",")
+                    .append(csv(tempC(t.startTempTenths))).append(",")
+                    .append(csv(tempC(t.endTempTenths))).append(",")
+                    .append(csv(t.sampleCount)).append(",")
+                    .append(csv(t.note)).append("\n");
+        }
+        return out.toString();
+    }
+
+    private static String samplesCsv(LabDao db, long sessionId) {
+        StringBuilder out = new StringBuilder(SAMPLE_COLUMNS).append("\n");
+        for (BatterySample s : db.getSamples(sessionId)) {
+            out.append(csv(s.id)).append(",")
+                    .append(csv(s.trialId)).append(",")
+                    .append(csv(s.elapsedMs)).append(",")
+                    .append(csv(s.currentUa)).append(",")
+                    .append(csv(s.chargeCounterUah)).append(",")
+                    .append(csv(s.voltageMv)).append(",")
+                    .append(csv(s.levelPct)).append(",")
+                    .append(csv(tempC(s.tempTenths))).append(",")
+                    .append(csv(s.screenOn)).append(",")
+                    .append(csv(s.airplaneMode)).append(",")
+                    .append(csv(s.plugged)).append("\n");
+        }
+        return out.toString();
+    }
+
+    private static String logCsv(LabDao db, long sessionId) {
+        StringBuilder out = new StringBuilder(LOG_COLUMNS).append("\n");
+        for (LogEntry e : db.getLog(sessionId)) {
+            out.append(csv(e.time)).append(",")
+                    .append(csv(e.trialId)).append(",")
+                    .append(csv(e.message)).append("\n");
+        }
+        return out.toString();
+    }
+
+    private static void write(ZipOutputStream zip, String name, String contents) throws IOException {
+        zip.putNextEntry(new ZipEntry(name));
+        zip.write(contents.getBytes(StandardCharsets.UTF_8));
+        zip.closeEntry();
+    }
+
+    // Tenths of a °C to °C, null stays null (so the cell comes out empty).
+    private static Double tempC(Integer tenths) {
+        if (tenths == null) return null;
+        return tenths / 10.0;
+    }
+
+    // Makes a value safe for a CSV cell: null becomes an empty cell, and anything containing a
+    // comma, a quote or a new line gets quoted with its own quotes doubled.
     public static String csv(Object value) {
         if (value == null) return "";
-        return value.toString();
+        String text = value.toString();
+        if (text.contains(",") || text.contains("\"") || text.contains("\n") || text.contains("\r")) {
+            return "\"" + text.replace("\"", "\"\"") + "\"";
+        }
+        return text;
     }
 
     // Opens the Android share menu (email, Google Drive, WhatsApp...) for the exported file.
