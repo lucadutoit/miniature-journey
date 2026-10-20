@@ -3,6 +3,7 @@ name: Android CI & APK Build
 on:
   push:
     branches: [ "main", "**" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
@@ -10,6 +11,9 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   test-android:
@@ -96,3 +100,34 @@ jobs:
           name: S15CodecTest-Debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
+
+  publish-release:
+    name: Publish Official GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test-android, test-analysis, build-apk]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Release APK
+        uses: actions/download-artifact@v4
+        with:
+          name: S15CodecTest-Release-APK
+          path: ./release-apk
+
+      - name: Download Debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: S15CodecTest-Debug-APK
+          path: ./debug-apk
+
+      - name: Create GitHub Release with APKs attached
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            ./release-apk/app-release.apk#app-release.apk \
+            ./debug-apk/app-debug.apk#app-debug.apk \
+            --title "Release ${{ github.ref_name }}" \
+            --generate-notes
