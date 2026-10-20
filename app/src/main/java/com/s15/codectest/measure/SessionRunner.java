@@ -18,17 +18,13 @@ import com.s15.codectest.db.Trial;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 // Runs a whole session: plays every trial in order, records the battery, and saves the results.
 // Runs on MeasurementService's background thread, so waiting with Thread.sleep() is fine.
 // Aborting = the thread gets interrupted, so let InterruptedException pass up (don't catch it).
 //
-// Owner: runner (Luca).
+// Owner: runner (Luca). Starting/stopping, playback and saving are done. The TODO(runner) parts are left.
 public class SessionRunner {
-
-    // How often the cool-down and the pre-trial check look at the phone again.
-    private static final long CHECK_EVERY_MS = 5000;
 
     private final Context context;
     private final LabDao db;
@@ -111,61 +107,19 @@ public class SessionRunner {
 
             long startTime = SystemClock.elapsedRealtime();
             List<BatterySample> samples = new ArrayList<>();
-            trial.maxTempTenths = start.tempTenths;
 
-            // Sampling loop: read the battery every Config.SAMPLE_EVERY_SECONDS until the trial is up.
-            while (true) {
-                long leftMs = session.trialDurationMs - (SystemClock.elapsedRealtime() - startTime);
-                if (leftMs <= 0) break;
-                Thread.sleep(Math.min(Config.SAMPLE_EVERY_SECONDS * 1000L, leftMs));
-
-                BatterySnapshot now = battery.snapshot();
-                long elapsedMs = SystemClock.elapsedRealtime() - startTime;
-
-                BatterySample sample = new BatterySample();
-                sample.trialId = trial.id;
-                sample.elapsedMs = elapsedMs;
-                sample.currentUa = now.currentUa;
-                sample.chargeCounterUah = now.chargeCounterUah;
-                sample.voltageMv = now.voltageMv;
-                sample.levelPct = now.levelPct;
-                sample.tempTenths = now.tempTenths;
-                sample.screenOn = now.screenOn;
-                sample.airplaneMode = now.airplaneMode;
-                sample.plugged = now.plugged;
-                db.insertSample(sample);
-                samples.add(sample);
-
-                if (now.tempTenths > trial.maxTempTenths) trial.maxTempTenths = now.tempTenths;
-
-                RunnerStatus.trialElapsedMs = elapsedMs;
-                RunnerStatus.currentMa = now.currentUa == null ? null : Math.abs(now.currentUa) / 1000.0;
-                RunnerStatus.tempC = now.tempC();
-
-                // The flags start out true, so they double as "not logged yet" markers.
-                if (!now.airplaneMode && trial.airplaneStayedOn) {
-                    trial.airplaneStayedOn = false;
-                    RunnerStatus.violations++;
-                    log(session, trial.id, clip.label() + ": airplane mode was turned off during the trial.");
-                }
-                if (now.screenOn && trial.screenStayedOff) {
-                    trial.screenStayedOff = false;
-                    RunnerStatus.violations++;
-                    log(session, trial.id, clip.label() + ": the screen was on during the trial.");
-                }
-
-                // Nothing can be measured while the battery is charging, so this trial is a write-off.
-                if (now.plugged) {
-                    trial.status = Trial.FAILED;
-                    trial.endedAt = System.currentTimeMillis();
-                    trial.note = "The charger was plugged in during the trial";
-                    trial.sampleCount = samples.size();
-                    db.updateTrial(trial);
-                    log(session, trial.id, clip.label() + ": charger plugged in, trial thrown away.");
-                    queueRerun(session, trial, "charger plugged in");
-                    return;
-                }
-            }
+            // TODO(runner): replace this sleep with the sampling loop:
+            //  - until session.trialDurationMs has passed (SystemClock.elapsedRealtime() - startTime):
+            //    sleep Config.SAMPLE_EVERY_SECONDS, take battery.snapshot(), make a BatterySample
+            //    (trialId, elapsedMs, current, charge, voltage, level, temp, screen, airplane, plugged),
+            //    save it with db.insertSample() and add it to `samples`.
+            //  - if airplane mode turns off or the screen turns on: set trial.airplaneStayedOn /
+            //    trial.screenStayedOff to false, add 1 to RunnerStatus.violations and log it (once each).
+            //  - if the charger gets plugged in: stop the loop, mark the trial FAILED, log it,
+            //    call queueRerun(...) and return (the readings are useless while charging).
+            //  - after every sample update RunnerStatus.trialElapsedMs, currentMa (|currentUa| / 1000) and tempC.
+            //  - set trial.maxTempTenths to the highest sample temperature.
+            Thread.sleep(session.trialDurationMs);
 
             BatterySnapshot end = battery.snapshot();
             Metrics m = computeMetrics(start, samples, end);
@@ -185,64 +139,18 @@ public class SessionRunner {
         }
     }
 
-    // Rest between trials so the next one doesn't start on a battery warmed up by the last one.
-    // Waits at least session.cooldownMs, then keeps waiting until the temperature is back within
-    // Config.TEMP_TOLERANCE_TENTHS of the session's starting temperature - but never longer than
-    // 3 x cooldownMs in total, otherwise a warm room would stall the session forever.
+    // TODO(runner): cool down between trials.
+    //  Wait at least session.cooldownMs. After that keep waiting until the battery temperature is
+    //  back within Config.TEMP_TOLERANCE_TENTHS of session.startTempTenths, but never longer than
+    //  3 x cooldownMs in total (if it's still too warm then, log that and carry on).
+    //  Check every 5 seconds and update RunnerStatus.message / tempC so the screen shows it.
     private void coolDown(Session session) throws InterruptedException {
-        long startTime = SystemClock.elapsedRealtime();
-        long limitMs = session.cooldownMs * 3;
-        Integer target = session.startTempTenths == null
-                ? null
-                : session.startTempTenths + Config.TEMP_TOLERANCE_TENTHS;
-
-        while (true) {
-            long waited = SystemClock.elapsedRealtime() - startTime;
-            BatterySnapshot now = battery.snapshot();
-            RunnerStatus.tempC = now.tempC();
-
-            boolean coolEnough = target == null || now.tempTenths <= target;
-            if (waited >= session.cooldownMs && coolEnough) return;
-
-            if (waited >= limitMs) {
-                log(session, null, String.format(Locale.US,
-                        "Still %.1f °C after %d s of cool-down (wanted %.1f °C), carrying on anyway.",
-                        now.tempC(), limitMs / 1000, target == null ? now.tempC() : target / 10.0));
-                return;
-            }
-
-            if (waited < session.cooldownMs) {
-                RunnerStatus.message = String.format(Locale.US, "Cooling down, %d s left (%.1f °C)",
-                        (session.cooldownMs - waited) / 1000, now.tempC());
-            } else {
-                RunnerStatus.message = String.format(Locale.US,
-                        "Waiting for the battery to cool to %.1f °C (now %.1f °C)", target / 10.0, now.tempC());
-            }
-
-            long nextStop = waited < session.cooldownMs ? session.cooldownMs : limitMs;
-            Thread.sleep(Math.min(CHECK_EVERY_MS, Math.max(1, nextStop - waited)));
-        }
     }
 
-    // A trial is only worth running with airplane mode on and the charger out, so wait for the user
-    // to sort that out first. The problem is logged once, not on every check.
+    // TODO(runner): wait until airplane mode is ON and the charger is unplugged before a trial.
+    //  Check every 5 seconds. Log the problem once (not every check) and put a message in
+    //  RunnerStatus.message telling the user what to fix.
     private void waitForConditions(Session session) throws InterruptedException {
-        boolean logged = false;
-        while (true) {
-            BatterySnapshot now = battery.snapshot();
-            List<String> todo = new ArrayList<>();
-            if (!now.airplaneMode) todo.add("turn on airplane mode");
-            if (now.plugged) todo.add("unplug the charger");
-            if (todo.isEmpty()) return;
-
-            String what = String.join(" and ", todo);
-            if (!logged) {
-                log(session, null, "Waiting for the user to " + what + " before the next trial.");
-                logged = true;
-            }
-            RunnerStatus.message = "Please " + what + " to carry on.";
-            Thread.sleep(CHECK_EVERY_MS);
-        }
     }
 
     public static class Metrics {
@@ -251,131 +159,29 @@ public class SessionRunner {
         public Double meanCurrentMa;
     }
 
-    // One current/voltage reading at a point in time: either the start snapshot or a sample.
-    private static class Reading {
-        final long timeMs;
-        final Long currentUa;
-        final int voltageMv;
-
-        Reading(long timeMs, Long currentUa, int voltageMv) {
-            this.timeMs = timeMs;
-            this.currentUa = currentUa;
-            this.voltageMv = voltageMv;
-        }
-    }
-
-    // The trial's results. Some phones report the current as negative while discharging, so only
-    // the size of it is used. Anything the phone doesn't report stays null instead of becoming 0.
+    // TODO(runner): work out the trial's results (MetricsTest checks this).
+    //  - deltaChargeMah = (start.chargeCounterUah - end.chargeCounterUah) / 1000.0, or null if either is null.
+    //  - Readings = the start snapshot (time 0) + every sample (time = elapsedMs). Use the absolute
+    //    value of the current because some phones report it as negative.
+    //  - meanCurrentMa = average |current| / 1000 over readings that have a current (null if none).
+    //  - energyJoules = trapezoid rule over neighbouring readings that both have a current:
+    //    add (|I1| * V1 + |I2| * V2) / 2 * seconds between them * 1e-9   (null if nothing was added).
     public static Metrics computeMetrics(BatterySnapshot start, List<BatterySample> samples, BatterySnapshot end) {
-        Metrics m = new Metrics();
-
-        if (start.chargeCounterUah != null && end.chargeCounterUah != null) {
-            m.deltaChargeMah = (start.chargeCounterUah - end.chargeCounterUah) / 1000.0;
-        }
-
-        List<Reading> readings = new ArrayList<>();
-        readings.add(new Reading(0, start.currentUa, start.voltageMv));
-        if (samples != null) {
-            for (BatterySample s : samples) {
-                readings.add(new Reading(s.elapsedMs, s.currentUa, s.voltageMv));
-            }
-        }
-
-        double currentSum = 0;
-        int currentCount = 0;
-        for (Reading r : readings) {
-            if (r.currentUa == null) continue;
-            currentSum += Math.abs(r.currentUa) / 1000.0;
-            currentCount++;
-        }
-        if (currentCount > 0) m.meanCurrentMa = currentSum / currentCount;
-
-        // Energy = the area under the power curve, by the trapezoid rule over neighbouring
-        // readings. One microamp x one millivolt x one second is 1e-9 of a joule.
-        double joules = 0;
-        boolean anyPair = false;
-        for (int i = 1; i < readings.size(); i++) {
-            Reading before = readings.get(i - 1);
-            Reading after = readings.get(i);
-            if (before.currentUa == null || after.currentUa == null) continue;
-            double powerBefore = Math.abs(before.currentUa) * (double) before.voltageMv;
-            double powerAfter = Math.abs(after.currentUa) * (double) after.voltageMv;
-            double seconds = (after.timeMs - before.timeMs) / 1000.0;
-            joules += (powerBefore + powerAfter) / 2 * seconds * 1e-9;
-            anyPair = true;
-        }
-        if (anyPair) m.energyJoules = joules;
-
-        return m;
+        return new Metrics();
     }
 
-    // After every trial, check this clip's finished trials against each other (proposal: anything
-    // more than Config.OUTLIER_SD SD out gets flagged and repeated, never deleted).
+    // TODO(runner): outlier check after each trial (proposal: > 3 SD gets flagged and repeated).
+    //  Take this clip's COMPLETED trials in the session (need at least 3). Use their deltaChargeMah
+    //  values (or energyJoules if the phone has no charge counter). Call OutlierEngine.findOutliers(values,
+    //  Config.OUTLIER_SD). For each outlier: status = Trial.OUTLIER, write a note, log it, queueRerun(...).
     private void checkOutliers(Session session, String clipFile) {
-        List<Trial> done = new ArrayList<>();
-        for (Trial t : db.getTrials(session.id)) {
-            if (t.clipFile.equals(clipFile) && t.status.equals(Trial.COMPLETED)) done.add(t);
-        }
-        if (done.size() < 3) return;
-
-        // Charge used is the main measure; phones without a charge counter fall back to energy.
-        List<Double> values = valuesOf(done, true);
-        if (values == null) values = valuesOf(done, false);
-        if (values == null) return; // this phone reports neither, so there is nothing to compare
-
-        Clip clip = Clip.find(clipFile);
-        String label = clip == null ? clipFile : clip.label();
-
-        for (int i : OutlierEngine.findOutliers(values, Config.OUTLIER_SD)) {
-            Trial outlier = done.get(i);
-            outlier.status = Trial.OUTLIER;
-            outlier.note = "More than " + Config.OUTLIER_SD + " SD from the other " + label + " trials";
-            db.updateTrial(outlier);
-            log(session, outlier.id, label + " rep " + (outlier.repetition + 1) + " is an outlier ("
-                    + values.get(i) + " against the other " + (values.size() - 1)
-                    + " trials), so it is left out of the statistics.");
-            queueRerun(session, outlier, "outlier");
-        }
     }
 
-    // The deltaChargeMah (or energyJoules) of every trial, or null if any one of them is missing it.
-    private List<Double> valuesOf(List<Trial> trials, boolean charge) {
-        List<Double> values = new ArrayList<>();
-        for (Trial t : trials) {
-            Double value = charge ? t.deltaChargeMah : t.energyJoules;
-            if (value == null) return null;
-            values.add(value);
-        }
-        return values;
-    }
-
-    // Adds a repeat of `original` at the end of the session, up to Config.MAX_RERUNS_PER_CLIP per clip.
+    // TODO(runner): add a repeat of `original` at the end of the session.
+    //  If this clip already has Config.MAX_RERUNS_PER_CLIP re-runs, just log that and stop.
+    //  Otherwise insert a new PENDING Trial (same clipFile and repetition, isRerun = true,
+    //  orderIndex = highest orderIndex in the session + 1) and log why.
     private void queueRerun(Session session, Trial original, String reason) {
-        int reruns = 0;
-        int lastOrderIndex = 0;
-        for (Trial t : db.getTrials(session.id)) {
-            if (t.isRerun && t.clipFile.equals(original.clipFile)) reruns++;
-            if (t.orderIndex > lastOrderIndex) lastOrderIndex = t.orderIndex;
-        }
-
-        Clip clip = Clip.find(original.clipFile);
-        String label = clip == null ? original.clipFile : clip.label();
-
-        if (reruns >= Config.MAX_RERUNS_PER_CLIP) {
-            log(session, original.id, label + " already has " + reruns + " re-runs ("
-                    + Config.MAX_RERUNS_PER_CLIP + " allowed), so no re-run was added for: " + reason + ".");
-            return;
-        }
-
-        Trial rerun = new Trial();
-        rerun.sessionId = session.id;
-        rerun.clipFile = original.clipFile;
-        rerun.repetition = original.repetition;
-        rerun.isRerun = true;
-        rerun.orderIndex = lastOrderIndex + 1;
-        db.insertTrial(rerun);
-        log(session, original.id, "Re-run of " + label + " rep " + (original.repetition + 1)
-                + " added at the end of the session (" + reason + ").");
     }
 
     private void markAborted(Session session) {
