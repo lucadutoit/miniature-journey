@@ -1,0 +1,149 @@
+name: Android CI & APK Build
+
+on:
+  push:
+    branches: [ "main", "**" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  test-android:
+    name: Run Android Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Set up Android SDK & keystore permissions
+        run: |
+          sudo chown -R $USER:$USER /home/runner /usr/local/lib/android
+          mkdir -p /home/runner/.config/.android /home/runner/.android
+          chmod -R 777 /home/runner/.config /home/runner/.android
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36"
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest --continue -Dorg.gradle.java.home="$JAVA_HOME"
+
+      - name: Upload Test Results on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 7
+
+  test-analysis:
+    name: Test Python Analysis Script
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'analysis/requirements.txt'
+
+      - name: Install Python dependencies
+        run: pip install -r analysis/requirements.txt
+
+      - name: Execute analysis on sample data
+        run: |
+          cd analysis
+          python analyse.py sample_trials.csv
+
+  build-apk:
+    name: Build & Package APKs
+    needs: [test-android, test-analysis]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Set up Android SDK & keystore permissions
+        run: |
+          sudo chown -R $USER:$USER /home/runner /usr/local/lib/android
+          mkdir -p /home/runner/.config/.android /home/runner/.android
+          chmod -R 777 /home/runner/.config /home/runner/.android
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36"
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Assemble Debug and Release APKs
+        run: ./gradlew assembleDebug assembleRelease -Dorg.gradle.java.home="$JAVA_HOME"
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: S15CodecTest-Release-APK
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: S15CodecTest-Debug-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  publish-release:
+    name: Publish Official GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test-android, test-analysis, build-apk]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Release APK
+        uses: actions/download-artifact@v4
+        with:
+          name: S15CodecTest-Release-APK
+          path: ./release-apk
+
+      - name: Download Debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: S15CodecTest-Debug-APK
+          path: ./debug-apk
+
+      - name: Create GitHub Release with APKs attached
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            ./release-apk/app-release.apk#app-release.apk \
+            ./debug-apk/app-debug.apk#app-debug.apk \
+            --title "Release ${{ github.ref_name }}" \
+            --generate-notes
