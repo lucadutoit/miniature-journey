@@ -30,11 +30,13 @@ jobs:
           java-version: '21'
           cache: 'gradle'
 
-      - name: Set up Android SDK & accept licenses
+      - name: Set up Android SDK & keystore permissions
         run: |
-          yes | sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36"
-          sudo chown -R $USER:$USER $ANDROID_HOME
+          sudo chown -R $USER:$USER /home/runner /usr/local/lib/android
+          mkdir -p /home/runner/.config/.android /home/runner/.android
+          chmod -R 777 /home/runner/.config /home/runner/.android
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36"
 
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
@@ -87,11 +89,13 @@ jobs:
           java-version: '21'
           cache: 'gradle'
 
-      - name: Set up Android SDK & accept licenses
+      - name: Set up Android SDK & keystore permissions
         run: |
-          yes | sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36"
-          sudo chown -R $USER:$USER $ANDROID_HOME
+          sudo chown -R $USER:$USER /home/runner /usr/local/lib/android
+          mkdir -p /home/runner/.config/.android /home/runner/.android
+          chmod -R 777 /home/runner/.config /home/runner/.android
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36"
 
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
