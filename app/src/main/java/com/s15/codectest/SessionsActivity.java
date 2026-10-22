@@ -1,39 +1,108 @@
 package com.s15.codectest;
 
 import android.os.Bundle;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.s15.codectest.db.LabDatabase;
 import com.s15.codectest.db.Session;
+import com.s15.codectest.export.CsvExporter;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
-// List of past sessions; tap one to export it. Owner: sessions
+// Displays past sessions and allows users to export their data
+// Owner: sessions
 public class SessionsActivity extends AppCompatActivity {
+
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM HH:mm", Locale.getDefault());
+
+    //Kept so the tap handler can look up which session was tapped
+    private final List<Session> sessions = new ArrayList<>();
+
+    private TextView infoText;
+    private ListView sessionList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sessions);
-        TextView infoText = findViewById(R.id.infoText);
-
-        new Thread(() -> {
-            List<Session> sessions = LabDatabase.get(this).getSessions();
-            runOnUiThread(() -> infoText.setText("TODO(sessions): show these " + sessions.size()
-                    + " sessions in the list below"));
-        }).start();
+        infoText = findViewById(R.id.infoText);
+        sessionList = findViewById(R.id.sessionList);
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
-        // TODO(sessions):
-        //  1. Show the sessions in R.id.sessionList using an ArrayAdapter<String>
-        //     (one line each, e.g. "Quick test - COMPLETED - 03 Oct 14:30").
-        //  2. When a session is tapped: on a background thread call CsvExporter.export(this, session.id),
-        //     then on the UI thread call CsvExporter.share(this, file). Show a Toast if it fails.
+        //Export the session selected by the user
+        sessionList.setOnItemClickListener((parent, view, position, id) -> {
+            if (position < sessions.size()) exportSession(sessions.get(position));
+        });
+
+        loadSessions();
+    }
+
+    // Refresh the list when the screen becomes visible again
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadSessions();
+    }
+
+    private void loadSessions() {
+        //read session data in the background to keep interface responsive
+        new Thread(() -> {
+            List<Session> loaded = LabDatabase.get(this).getSessions();
+            runOnUiThread(() -> showSessions(loaded));
+        }).start();
+    }
+
+    private void showSessions(List<Session> loaded) {
+        sessions.clear();
+        sessions.addAll(loaded);
+
+        List<String> lines = new ArrayList<>();
+        for (Session s : sessions) {
+            lines.add(describe(s));
+        }
+        sessionList.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, lines));
+
+        infoText.setText(sessions.isEmpty()
+                ? "No sessions yet. Start one from the home screen."
+                : "Tap a session to export its data.");
+    }
+
+
+    //Format (name - pilot status - completion status - creation date
+      // e.g. "Quick test (pilot) - COMPLETED - 03 Oct 14:30"
+    private String describe(Session session) {
+        String name = session.name == null || session.name.isEmpty() ? "Session " + session.id : session.name;
+        return name + (session.pilot ? " (pilot)" : "")
+                + " - " + session.status
+                + " - " + dateFormat.format(new Date(session.createdAt));
+    }
+
+    private void exportSession(Session session) {
+        Toast.makeText(this, "Exporting " + session.name + "…", Toast.LENGTH_SHORT).show();
+
+        //Export the selected session in the background and share result file
+        new Thread(() -> {
+            try {
+                File file = CsvExporter.export(this, session.id);
+                runOnUiThread(() -> CsvExporter.share(this, file));
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this,
+                        "Export failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        }).start();
     }
 
     @Override
