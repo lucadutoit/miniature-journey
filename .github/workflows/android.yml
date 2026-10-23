@@ -35,6 +35,9 @@ jobs:
       # download android-36 itself.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the old 'tools' package, which no longer exists.
+          packages: 'platform-tools platforms;android-36'
 
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
@@ -91,6 +94,9 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the old 'tools' package, which no longer exists.
+          packages: 'platform-tools platforms;android-36'
 
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
