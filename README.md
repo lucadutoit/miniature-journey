@@ -3,6 +3,12 @@
 Android app (Java) that measures how much battery MP3, AAC, Opus and FLAC playback uses.
 The app only collects the data — the statistics are done in Python (`analysis/analyse.py`).
 
+## Demo Video
+
+https://github.com/user-attachments/assets/d916f236-ea95-4fe8-9685-249e966b11e6
+
+
+
 ## Start
 
 1. Open this folder in Android Studio and wait for Gradle sync.
@@ -32,8 +38,12 @@ bundled one works:
 ./gradlew testDebugUnitTest -Dorg.gradle.java.home="C:/Program Files/Android/Android Studio/jbr"
 ```
 
+## Demo Video
+
 ## Rules
 
 - Only edit your own files. Ask the group before changing anything in `db/` or `Config.java`.
 - Don't use the database on the main thread — use `new Thread(() -> { ... }).start()`.
 - Use your own branch and merge often.
+
+
