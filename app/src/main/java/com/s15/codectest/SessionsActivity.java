@@ -81,17 +81,21 @@ public class SessionsActivity extends AppCompatActivity {
     }
 
 
-    //Format (name - pilot status - completion status - creation date
-      // e.g. "Quick test (pilot) - COMPLETED - 03 Oct 14:30"
+    // Format: name (pilot) - status - creation date
+    // e.g. "Practice run (pilot) - COMPLETED - 03 Oct 14:30"
     private String describe(Session session) {
-        String name = session.name == null || session.name.isEmpty() ? "Session " + session.id : session.name;
-        return name + (session.pilot ? " (pilot)" : "")
+        return displayName(session) + (session.pilot ? " (pilot)" : "")
                 + " - " + session.status
                 + " - " + dateFormat.format(new Date(session.createdAt));
     }
 
+    // The session's name, or "Session <id>" if it has none
+    private String displayName(Session session) {
+        return session.name == null || session.name.isEmpty() ? "Session " + session.id : session.name;
+    }
+
     private void exportSession(Session session) {
-        Toast.makeText(this, "Exporting " + session.name + "…", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Exporting " + displayName(session) + "…", Toast.LENGTH_SHORT).show();
 
         //Export the selected session in the background and share result file
         new Thread(() -> {

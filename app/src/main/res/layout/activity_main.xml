@@ -50,13 +50,5 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Past sessions / export" />
-
-        <Button
-            android:id="@+id/quickTestButton"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:text="Quick test run (for testing, remove later)" />
     </LinearLayout>
 </ScrollView>
