@@ -20,7 +20,17 @@ The app only collects the data — the statistics are done in Python (`analysis/
 | `home` | Home screen battery info + testing on the real phone | try it on the phone |
 | `analysis` | Python script: averages, ANOVA, Tukey, chart | run it on `sample_trials.csv` |
 
-Use the **Quick test run** button on the home screen to try a session before the New Session screen is done.
+To try the app quickly, start a session from **New session** with **Pilot** ticked (2-minute trials, 2 repetitions).
+
+## Building from a terminal
+
+Android Studio uses its own JDK, so nothing is needed there. For `./gradlew` in a terminal, `JAVA_HOME`
+must be a JDK 17–21 (newer ones are too new for this Gradle version). On Windows, Android Studio's
+bundled one works:
+
+```
+./gradlew testDebugUnitTest -Dorg.gradle.java.home="C:/Program Files/Android/Android Studio/jbr"
+```
 
 ## Rules
 

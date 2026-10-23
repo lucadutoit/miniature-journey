@@ -14,11 +14,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.s15.codectest.measure.BatteryMonitor;
 import com.s15.codectest.measure.BatterySnapshot;
-import com.s15.codectest.measure.MeasurementService;
 import com.s15.codectest.measure.RunnerStatus;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 
 // Home screen. Owner: home (Michael)
@@ -55,7 +52,6 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(this, SessionsActivity.class)));
         runningButton.setOnClickListener(v ->
                 startActivity(new Intent(this, RunnerActivity.class)));
-        findViewById(R.id.quickTestButton).setOnClickListener(v -> quickTest());
 
         // Needed so the "measurement running" notification can show on Android 13+.
         if (Build.VERSION.SDK_INT >= 33) {
@@ -97,21 +93,5 @@ public class MainActivity extends AppCompatActivity {
         } else {
             warning.setText("");
         }
-    }
-
-    // For testing the runner without the New Session screen: a 2-minute pilot with one clip per codec.
-    // TODO: remove this button before handing in.
-    private void quickTest() {
-        new Thread(() -> {
-            List<String> clips = new ArrayList<>();
-            for (Clip c : Clip.ALL) {
-                if (c.kbps == 128 || c.kbps == 0) clips.add(c.file);
-            }
-            long id = SessionMaker.create(this, "Quick test", clips, true);
-            runOnUiThread(() -> {
-                MeasurementService.start(this, id);
-                startActivity(new Intent(this, RunnerActivity.class));
-            });
-        }).start();
     }
 }
