@@ -38,7 +38,10 @@ bundled one works:
 ./gradlew testDebugUnitTest -Dorg.gradle.java.home="C:/Program Files/Android/Android Studio/jbr"
 ```
 
-## Demo Video
+## Demo Requirements
+- Battery must be at least 80%
+- Airplane mode must be enabled
+- more than 1 codec option must be chosen
 
 ## Rules
 
